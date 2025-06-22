@@ -15,6 +15,7 @@
 #include "cryptopp/gcm.h"
 #include "cryptopp/ccm.h"
 #include "cryptopp/authenc.h"
+
 using namespace CryptoPP;
 
 // Export macro cho DLL
@@ -78,59 +79,85 @@ void LoadKeyFromFile(const char* filename, byte* key, byte* iv) {
  
 void AESEncrypt(const byte* key, const byte* iv, const char* inputFile, const char* outputFile, const char* mode)
 {
-    try {
-        StreamTransformation* encryptor = nullptr;
-
+     try {
         std::string modeStr(mode);
-        if (modeStr == "ECB") {
-            ECB_Mode<AES>::Encryption* e = new ECB_Mode<AES>::Encryption;
-            e->SetKey(key, AES::DEFAULT_KEYLENGTH);
-            encryptor = e;
-        } else if (modeStr == "CBC") {
-            CBC_Mode<AES>::Encryption* e = new CBC_Mode<AES>::Encryption;
-            e->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv);
-            encryptor = e;
-        } else if (modeStr == "CFB") {
-            CFB_Mode<AES>::Encryption* e = new CFB_Mode<AES>::Encryption;
-            e->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv);
-            encryptor = e;
-        } else if (modeStr == "OFB") {
-            OFB_Mode<AES>::Encryption* e = new OFB_Mode<AES>::Encryption;
-            e->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv);
-            encryptor = e;
-        } else if (modeStr == "CTR") {
-            CTR_Mode<AES>::Encryption* e = new CTR_Mode<AES>::Encryption;
-            e->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv);
-            encryptor = e;
-        } if (modeStr == "XTS") {
-            SecByteBlock tweak(AES::BLOCKSIZE);
-            memcpy(tweak, iv, AES::BLOCKSIZE); 
-            XTS_Mode<AES>::Encryption* e = new XTS_Mode<AES>::Encryption;
-            e->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH * 2, tweak); 
-            encryptor = e;
-        }
-        else if (modeStr == "GCM") {
-            GCM<AES>::Encryption* e = new GCM<AES>::Encryption;
-            e->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv, AES::BLOCKSIZE);
-            encryptor = e;
-        }
-        else if (modeStr == "CCM") {
-            CCM<AES, 16>::Encryption* e = new CCM<AES, 16>::Encryption;
-            e->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv, AES::BLOCKSIZE);
-            e->SpecifyDataLengths(0, 0, 0);
-            encryptor = e;
+
+        if (modeStr == "GCM" || modeStr == "CCM") {
+            // GCM / CCM dùng authenticated encryption
+            if (modeStr == "GCM") {
+                GCM<AES>::Encryption gcm;
+                gcm.SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv, AES::BLOCKSIZE);
+
+                AuthenticatedEncryptionFilter aef(
+                    gcm,
+                    new FileSink(outputFile),
+                    false, 16 // 16 byte tag
+                );
+
+                FileSource fs(inputFile, true, new Redirector(aef));
+            }
+            else { // CCM
+                CCM<AES, 16>::Encryption ccm;
+                ccm.SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv, AES::BLOCKSIZE);
+                ccm.SpecifyDataLengths(0, 0, 0);
+
+                AuthenticatedEncryptionFilter aef(
+                    ccm,
+                    new FileSink(outputFile),
+                    false, 16 // 16 byte tag
+                );
+
+                FileSource fs(inputFile, true, new Redirector(aef));
+            }
         }
         else {
-            std::cerr << "Unsupported mode: " << mode << std::endl;
-            return;
+            StreamTransformation* encryptor = nullptr;
+
+            if (modeStr == "ECB") {
+                ECB_Mode<AES>::Encryption* e = new ECB_Mode<AES>::Encryption;
+                e->SetKey(key, AES::DEFAULT_KEYLENGTH);
+                encryptor = e;
+            }
+            else if (modeStr == "CBC") {
+                CBC_Mode<AES>::Encryption* e = new CBC_Mode<AES>::Encryption;
+                e->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv);
+                encryptor = e;
+            }
+            else if (modeStr == "CFB") {
+                CFB_Mode<AES>::Encryption* e = new CFB_Mode<AES>::Encryption;
+                e->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv);
+                encryptor = e;
+            }
+            else if (modeStr == "OFB") {
+                OFB_Mode<AES>::Encryption* e = new OFB_Mode<AES>::Encryption;
+                e->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv);
+                encryptor = e;
+            }
+            else if (modeStr == "CTR") {
+                CTR_Mode<AES>::Encryption* e = new CTR_Mode<AES>::Encryption;
+                e->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv);
+                encryptor = e;
+            }
+            else if (modeStr == "XTS") {
+                SecByteBlock tweak(iv, AES::BLOCKSIZE);
+                XTS_Mode<AES>::Encryption* e = new XTS_Mode<AES>::Encryption;
+                e->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH * 2, tweak);
+                encryptor = e;
+            }
+            else {
+                std::cerr << "Unsupported mode: " << mode << std::endl;
+                return;
+            }
+
+            // No padding cho các mode CTR, XTS, OFB, CFB
+            FileSource fs(inputFile, true,
+                new StreamTransformationFilter(*encryptor,
+                    new FileSink(outputFile),
+                    BlockPaddingSchemeDef::NO_PADDING));
+
+            delete encryptor;
         }
 
-        FileSource fs(inputFile, true,
-            new StreamTransformationFilter(*encryptor,
-                new FileSink(outputFile),
-                BlockPaddingSchemeDef::PKCS_PADDING));
-
-        delete encryptor;
         std::cout << "[+] Encryption complete using mode " << mode << std::endl;
     }
     catch (const Exception& e) {
@@ -142,58 +169,106 @@ void AESEncrypt(const byte* key, const byte* iv, const char* inputFile, const ch
 void AESDecrypt(const byte* key, const byte* iv, const char* inputFile, const char* outputFile, const char* mode)
 {
     try {
-        StreamTransformation* decryptor = nullptr;
         std::string modeStr(mode);
 
-        if (modeStr == "ECB") {
-            ECB_Mode<AES>::Decryption* d = new ECB_Mode<AES>::Decryption;
-            d->SetKey(key, AES::DEFAULT_KEYLENGTH);
-            decryptor = d;
-        } else if (modeStr == "CBC") {
-            CBC_Mode<AES>::Decryption* d = new CBC_Mode<AES>::Decryption;
-            d->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv);
-            decryptor = d;
-        } else if (modeStr == "CFB") {
-            CFB_Mode<AES>::Decryption* d = new CFB_Mode<AES>::Decryption;
-            d->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv);
-            decryptor = d;
-        } else if (modeStr == "OFB") {
-            OFB_Mode<AES>::Decryption* d = new OFB_Mode<AES>::Decryption;
-            d->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv);
-            decryptor = d;
-        } else if (modeStr == "CTR") {
-            CTR_Mode<AES>::Decryption* d = new CTR_Mode<AES>::Decryption;
-            d->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv);
-            decryptor = d;
-        } if (modeStr == "XTS") {
-            SecByteBlock tweak(AES::BLOCKSIZE);
-            memcpy(tweak, iv, AES::BLOCKSIZE);
-            XTS_Mode<AES>::Decryption* e = new XTS_Mode<AES>::Decryption;
-            e->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH * 2, tweak);
-            encryptor = e;
-        }
-        else if (modeStr == "GCM") {
-            GCM<AES>::Decryption* e = new GCM<AES>::Decryption;
-            e->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv, AES::BLOCKSIZE);
-            encryptor = e;
-        }
-        else if (modeStr == "CCM") {
-            CCM<AES, 16>::Decryption* e = new CCM<AES, 16>::Decryption;
-            e->SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv, AES::BLOCKSIZE);
-            e->SpecifyDataLengths(0, 0, 0); 
-            encryptor = e;
+        if (modeStr == "GCM" || modeStr == "CCM") {
+            // Đọc toàn bộ file input
+            std::string cipherWithTag;
+            FileSource(inputFile, true, new StringSink(cipherWithTag));
+
+            // Tách tag ra cuối (16 bytes)
+            if (cipherWithTag.size() < 16) {
+                std::cerr << "Input file too small to contain tag" << std::endl;
+                return;
+            }
+
+            std::string ciphertext = cipherWithTag.substr(0, cipherWithTag.size() - 16);
+            std::string tag = cipherWithTag.substr(cipherWithTag.size() - 16);
+
+            if (modeStr == "GCM") {
+                GCM<AES>::Decryption gcm;
+                gcm.SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv, AES::BLOCKSIZE);
+
+                AuthenticatedDecryptionFilter df(
+                    gcm,                          // GCM or CCM object
+                    new FileSink(outputFile),
+                    AuthenticatedDecryptionFilter::THROW_EXCEPTION,
+                    16 // tag size in bytes
+                );
+
+                df.ChannelPut(AAD_CHANNEL, nullptr, 0);  // optional AAD
+                df.ChannelMessageEnd(AAD_CHANNEL);
+
+                // Ciphertext
+                df.Put(reinterpret_cast<const byte*>(ciphertext.data()), ciphertext.size());
+
+                // Authentication tag
+                df.ChannelPut("MAC", reinterpret_cast<const byte*>(tag.data()), 16);
+                df.ChannelMessageEnd("MAC");
+
+
+                df.MessageEnd(); //
+            }
+            else { // CCM
+                CCM<AES, 16>::Decryption ccm;
+                ccm.SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv, AES::BLOCKSIZE);
+                ccm.SpecifyDataLengths(0, ciphertext.size(), 0);
+
+                AuthenticatedDecryptionFilter df(
+                    ccm,                          // GCM or CCM object
+                    new FileSink(outputFile),
+                    AuthenticatedDecryptionFilter::THROW_EXCEPTION,
+                    16 // tag size in bytes
+                );
+
+                df.ChannelPut(AAD_CHANNEL, nullptr, 0);  // optional AAD
+                df.ChannelMessageEnd(AAD_CHANNEL);
+
+                // Ciphertext
+                df.Put(reinterpret_cast<const byte*>(ciphertext.data()), ciphertext.size());
+
+                // Authentication tag
+                df.ChannelPut("MAC", reinterpret_cast<const byte*>(tag.data()), 16);
+                df.ChannelMessageEnd("MAC");
+
+
+                df.MessageEnd(); //
+            }
         }
         else {
-            std::cerr << "Unsupported mode: " << mode << std::endl;
-            return;
+            StreamTransformation* decryptor = nullptr;
+
+            if (modeStr == "ECB") {
+                decryptor = new ECB_Mode<AES>::Decryption(key, AES::DEFAULT_KEYLENGTH);
+            }
+            else if (modeStr == "CBC") {
+                decryptor = new CBC_Mode<AES>::Decryption(key, AES::DEFAULT_KEYLENGTH, iv);
+            }
+            else if (modeStr == "CFB") {
+                decryptor = new CFB_Mode<AES>::Decryption(key, AES::DEFAULT_KEYLENGTH, iv);
+            }
+            else if (modeStr == "OFB") {
+                decryptor = new OFB_Mode<AES>::Decryption(key, AES::DEFAULT_KEYLENGTH, iv);
+            }
+            else if (modeStr == "CTR") {
+                decryptor = new CTR_Mode<AES>::Decryption(key, AES::DEFAULT_KEYLENGTH, iv);
+            }
+            else if (modeStr == "XTS") {
+                SecByteBlock tweak(iv, AES::BLOCKSIZE);
+                decryptor = new XTS_Mode<AES>::Decryption(key, AES::DEFAULT_KEYLENGTH * 2, tweak);
+            }
+            else {
+                std::cerr << "Unsupported mode: " << mode << std::endl;
+                return;
+            }
+
+            FileSource(inputFile, true,
+                new StreamTransformationFilter(*decryptor,
+                    new FileSink(outputFile),
+                    BlockPaddingSchemeDef::NO_PADDING));
+
+            delete decryptor;
         }
-
-        FileSource fs(inputFile, true,
-            new StreamTransformationFilter(*decryptor,
-                new FileSink(outputFile),
-                BlockPaddingSchemeDef::PKCS_PADDING));
-
-        delete decryptor;
 
         std::cout << "[+] Decryption complete using mode " << mode << std::endl;
     }

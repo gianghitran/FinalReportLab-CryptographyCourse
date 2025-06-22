@@ -15,6 +15,7 @@ namespace _23521005_UI_FinalReport
     {
         const int AES_KEY_SIZE = 16;
         const int AES_IV_SIZE = 16;
+        const int AES_KEY_SIZE_XTS = 32; // for XTS mode
 
         [DllImport("AES_KeyGen.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "GenerateAESKey")]
         public static extern void GenerateAESKey(byte[] key, byte[] iv);
@@ -115,8 +116,25 @@ namespace _23521005_UI_FinalReport
             byte[] key = StringToByteArray(textBox1.Text);
             byte[] iv = StringToByteArray(textBox2.Text);
 
+            if ((mode == "XTS" && key.Length != AES_KEY_SIZE_XTS) || (mode != "XTS" && key.Length != AES_KEY_SIZE))
+            {
+                MessageBox.Show($"Invalid key length for mode {mode}.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+
             AESEncrypt(key, iv, inputFile, outputFile, mode);
-            MessageBox.Show("Encryption done.");
+
+            // GCM/CCM giả định ghi tag vào cuối file mã hóa (xử lý trong DLL)
+            if (mode == "GCM" || mode == "CCM")
+            {
+                MessageBox.Show("Encryption done. Tag is appended to output file.");
+            }
+            else
+            {
+                MessageBox.Show("Encryption done.");
+            }
+
         }
 
         private void richTextBox1_TextChanged(object sender, EventArgs e)
@@ -133,8 +151,22 @@ namespace _23521005_UI_FinalReport
             byte[] key = StringToByteArray(textBox1.Text);
             byte[] iv = StringToByteArray(textBox2.Text);
 
+            if ((mode == "XTS" && key.Length != AES_KEY_SIZE_XTS) || (mode != "XTS" && key.Length != AES_KEY_SIZE))
+            {
+                MessageBox.Show($"Invalid key length for mode {mode}.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
             AESDecrypt(key, iv, inputFile, outputFile, mode);
-            MessageBox.Show("Decryption done.");
+
+            if (mode == "GCM" || mode == "CCM")
+            {
+                MessageBox.Show("Decryption complete with tag verification.");
+            }
+            else
+            {
+                MessageBox.Show("Decryption done.");
+            }
         }
 
         private void button9_Click(object sender, EventArgs e)//import plaintext
@@ -161,7 +193,8 @@ namespace _23521005_UI_FinalReport
 
         private void button7_Click(object sender, EventArgs e)//random key
         {
-            byte[] key = new byte[AES_KEY_SIZE];
+            int keySize = comboBox1.SelectedItem.ToString() == "XTS" ? AES_KEY_SIZE_XTS : AES_KEY_SIZE;
+            byte[] key = new byte[keySize];
             new System.Security.Cryptography.RNGCryptoServiceProvider().GetBytes(key);
             textBox1.Text = BitConverter.ToString(key).Replace("-", "");
         }
