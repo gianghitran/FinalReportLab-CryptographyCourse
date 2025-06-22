@@ -28,6 +28,11 @@ using namespace CryptoPP;
 extern "C" EXPORT void GenerateAESKey(byte* key, byte* iv);
 extern "C" EXPORT void SaveKeyToFile(const char* filename, const byte* key, const byte* iv);
 extern "C" EXPORT void LoadKeyFromFile(const char* filename, byte* key, byte* iv);
+
+extern "C" EXPORT void GenerateAESKeyXTS(byte* key, byte* iv);
+extern "C" EXPORT void SaveKeyToFileXTS(const char* filename, const byte* key, const byte* iv);
+extern "C" EXPORT void LoadKeyFromFileXTS(const char* filename, byte* key, byte* iv);
+
 extern "C" EXPORT void AESEncrypt(const byte *key, const byte *iv, const char* inputFile, const char* outputFile, const char* mode);
 extern "C" EXPORT void AESDecrypt(const byte *key, const byte *iv, const char* inputFile, const char* outputFile, const char* mode);
 
@@ -76,7 +81,42 @@ void LoadKeyFromFile(const char* filename, byte* key, byte* iv) {
         std::cerr << "Error loading key and IV: " << e.what() << std::endl;
     }
 }
+
+// Tạo key và IV
+void GenerateAESKeyXTS(byte* key, byte* iv) {
+    AutoSeededRandomPool prng;
+    prng.GenerateBlock(key, AES::DEFAULT_KEYLENGTH*2);
+    prng.GenerateBlock(iv, AES::BLOCKSIZE);
+}
+
+// Lưu key và IV
+void SaveKeyToFileXTS(const char* filename, const byte* key, const byte* iv) {
+    
+    FileSink file(filename, true);
+    file.Put(key, AES::DEFAULT_KEYLENGTH*2);
+    file.Put(iv, AES::BLOCKSIZE);
+    file.MessageEnd();
+    std::cout << "[+] Key and IV saved to file " << filename << std::endl;
+}
+
+// Load key và IV
+void LoadKeyFromFileXTS(const char* filename, byte* key, byte* iv) {
+    try {
+        FileSource file(filename, false);
+        file.Attach(new ArraySink(key, AES::DEFAULT_KEYLENGTH*2));
+        file.Pump(AES::DEFAULT_KEYLENGTH*2);
+
+        file.Attach(new ArraySink(iv, AES::BLOCKSIZE));
+        file.Pump(AES::BLOCKSIZE);
+
+        PrintHex("Loaded Key", key, AES::DEFAULT_KEYLENGTH*2);
+        PrintHex("Loaded IV", iv, AES::BLOCKSIZE);
+    } catch (const CryptoPP::Exception& e) {
+        std::cerr << "Error loading key and IV: " << e.what() << std::endl;
+    }
+}
  
+
 void AESEncrypt(const byte* key, const byte* iv, const char* inputFile, const char* outputFile, const char* mode)
 {
      try {
@@ -97,17 +137,20 @@ void AESEncrypt(const byte* key, const byte* iv, const char* inputFile, const ch
                 FileSource fs(inputFile, true, new Redirector(aef));
             }
             else { // CCM
+                 std::string plaintext;
+                FileSource(inputFile, true, new StringSink(plaintext));
+
                 CCM<AES, 16>::Encryption ccm;
                 ccm.SetKeyWithIV(key, AES::DEFAULT_KEYLENGTH, iv, AES::BLOCKSIZE);
-                ccm.SpecifyDataLengths(0, 0, 0);
-
-                AuthenticatedEncryptionFilter aef(
-                    ccm,
-                    new FileSink(outputFile),
-                    false, 16 // 16 byte tag
+                ccm.SpecifyDataLengths(0, plaintext.size(), 0);  
+                StringSource ss(
+                    plaintext, true,
+                    new AuthenticatedEncryptionFilter(
+                        ccm,
+                        new FileSink(outputFile),
+                        false, 16
+                    )
                 );
-
-                FileSource fs(inputFile, true, new Redirector(aef));
             }
         }
         else {

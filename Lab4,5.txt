@@ -98,5 +98,4 @@ Submit Lab 4, 5:
 - your compile files
 - your report
 Compress (rar or zip) all in one file with name in the form: Studentnumber-lab4,5.rar
-Deadline: 6/7/2024
-
+Deadli

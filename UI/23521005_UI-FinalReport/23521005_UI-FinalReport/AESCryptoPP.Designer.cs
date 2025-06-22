@@ -41,6 +41,8 @@
             this.label_pri = new System.Windows.Forms.Label();
             this.label_curve = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.button12 = new System.Windows.Forms.Button();
+            this.button11 = new System.Windows.Forms.Button();
             this.richTextBox2 = new System.Windows.Forms.RichTextBox();
             this.richTextBox1 = new System.Windows.Forms.RichTextBox();
             this.button10 = new System.Windows.Forms.Button();
@@ -59,8 +61,6 @@
             this.label2 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
             this.button6 = new System.Windows.Forms.Button();
-            this.button11 = new System.Windows.Forms.Button();
-            this.button12 = new System.Windows.Forms.Button();
             this.groupBox_RSA.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.SuspendLayout();
@@ -231,6 +231,33 @@
             this.groupBox1.TabIndex = 8;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "WORK SPACE";
+            this.groupBox1.Enter += new System.EventHandler(this.groupBox1_Enter);
+            // 
+            // button12
+            // 
+            this.button12.BackColor = System.Drawing.SystemColors.ControlLight;
+            this.button12.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.button12.ForeColor = System.Drawing.Color.Black;
+            this.button12.Location = new System.Drawing.Point(327, 439);
+            this.button12.Name = "button12";
+            this.button12.Size = new System.Drawing.Size(108, 26);
+            this.button12.TabIndex = 22;
+            this.button12.Text = "Load key";
+            this.button12.UseVisualStyleBackColor = false;
+            this.button12.Click += new System.EventHandler(this.button12_Click);
+            // 
+            // button11
+            // 
+            this.button11.BackColor = System.Drawing.SystemColors.ControlLight;
+            this.button11.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.button11.ForeColor = System.Drawing.Color.Black;
+            this.button11.Location = new System.Drawing.Point(188, 439);
+            this.button11.Name = "button11";
+            this.button11.Size = new System.Drawing.Size(108, 26);
+            this.button11.TabIndex = 21;
+            this.button11.Text = "Save key";
+            this.button11.UseVisualStyleBackColor = false;
+            this.button11.Click += new System.EventHandler(this.button11_Click);
             // 
             // richTextBox2
             // 
@@ -422,32 +449,6 @@
             this.button6.TabIndex = 7;
             this.button6.Text = "AES - CryptoPP";
             this.button6.UseVisualStyleBackColor = false;
-            // 
-            // button11
-            // 
-            this.button11.BackColor = System.Drawing.SystemColors.ControlLight;
-            this.button11.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.button11.ForeColor = System.Drawing.Color.Black;
-            this.button11.Location = new System.Drawing.Point(188, 439);
-            this.button11.Name = "button11";
-            this.button11.Size = new System.Drawing.Size(108, 26);
-            this.button11.TabIndex = 21;
-            this.button11.Text = "Save key";
-            this.button11.UseVisualStyleBackColor = false;
-            this.button11.Click += new System.EventHandler(this.button11_Click);
-            // 
-            // button12
-            // 
-            this.button12.BackColor = System.Drawing.SystemColors.ControlLight;
-            this.button12.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.button12.ForeColor = System.Drawing.Color.Black;
-            this.button12.Location = new System.Drawing.Point(327, 439);
-            this.button12.Name = "button12";
-            this.button12.Size = new System.Drawing.Size(108, 26);
-            this.button12.TabIndex = 22;
-            this.button12.Text = "Load key";
-            this.button12.UseVisualStyleBackColor = false;
-            this.button12.Click += new System.EventHandler(this.button12_Click);
             // 
             // AESCryptoPP
             // 

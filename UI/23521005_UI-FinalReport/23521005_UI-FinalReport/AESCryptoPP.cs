@@ -26,6 +26,18 @@ namespace _23521005_UI_FinalReport
         [DllImport("AES_KeyGen.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "LoadKeyFromFile")]
         public static extern void LoadKeyFromFile(string filename, byte[] key, byte[] iv);
 
+        //XTS mode
+        [DllImport("AES_KeyGen.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "GenerateAESKeyXTS")]
+        public static extern void GenerateAESKeyXTS(byte[] key, byte[] iv);
+
+        [DllImport("AES_KeyGen.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "SaveKeyToFileXTS")]
+        public static extern void SaveKeyToFileXTS(string filename, byte[] key, byte[] iv);
+
+        [DllImport("AES_KeyGen.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "LoadKeyFromFileXTS")]
+        public static extern void LoadKeyFromFileXTS(string filename, byte[] key, byte[] iv);
+
+
+
         [DllImport("AES_KeyGen.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "AESEncrypt")]
         public static extern void AESEncrypt(byte[] key, byte[] iv, string inputFile, string outputFile, string mode);
 
@@ -100,9 +112,16 @@ namespace _23521005_UI_FinalReport
         }
         private void button3_Click(object sender, EventArgs e)//Genkey
         {
-            byte[] key = new byte[AES_KEY_SIZE];
+            int keySize = comboBox1.SelectedItem.ToString() == "XTS" ? AES_KEY_SIZE_XTS : AES_KEY_SIZE;
+
+            byte[] key = new byte[keySize];
             byte[] iv = new byte[AES_IV_SIZE];
-            GenerateAESKey(key, iv);
+            if (comboBox1.SelectedItem.ToString() == "XTS")
+            {
+                GenerateAESKeyXTS(key, iv);
+            }else
+                GenerateAESKey(key, iv);
+
 
             textBox1.Text = BitConverter.ToString(key).Replace("-", "");
             textBox2.Text = BitConverter.ToString(iv).Replace("-", "");
@@ -206,7 +225,7 @@ namespace _23521005_UI_FinalReport
             textBox2.Text = BitConverter.ToString(iv).Replace("-", "");
         }
 
-        private void button11_Click(object sender, EventArgs e)
+        private void button11_Click(object sender, EventArgs e) //savekey
         {
             using (SaveFileDialog sfd = new SaveFileDialog())
             {
@@ -216,13 +235,20 @@ namespace _23521005_UI_FinalReport
                 {
                     byte[] key = StringToByteArray(textBox1.Text);
                     byte[] iv = StringToByteArray(textBox2.Text);
-                    SaveKeyToFile(sfd.FileName, key, iv);
+                    if (comboBox1.SelectedItem.ToString() == "XTS")
+                    {
+                        SaveKeyToFileXTS(sfd.FileName, key, iv);
+                    }
+                    else
+                        SaveKeyToFile(sfd.FileName, key, iv);
+
+
                     MessageBox.Show("Key saved successfully.");
                 }
             }
         }
 
-        private void button12_Click(object sender, EventArgs e)
+        private void button12_Click(object sender, EventArgs e) //loadkey
         {
             using (OpenFileDialog ofd = new OpenFileDialog())
             {
@@ -230,14 +256,27 @@ namespace _23521005_UI_FinalReport
                 ofd.Filter = "Key File (*.bin)|*.bin|All Files (*.*)|*.*";
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
-                    byte[] key = new byte[AES_KEY_SIZE];
+                    int keySize = comboBox1.SelectedItem.ToString() == "XTS" ? AES_KEY_SIZE_XTS : AES_KEY_SIZE;
+                    byte[] key = new byte[keySize];
                     byte[] iv = new byte[AES_IV_SIZE];
-                    LoadKeyFromFile(ofd.FileName, key, iv);
+                    if (comboBox1.SelectedItem.ToString() == "XTS")
+                    {
+                        LoadKeyFromFileXTS(ofd.FileName, key, iv);
+
+                    }
+                    else
+                        LoadKeyFromFile(ofd.FileName, key, iv);
+
                     textBox1.Text = BitConverter.ToString(key).Replace("-", "");
                     textBox2.Text = BitConverter.ToString(iv).Replace("-", "");
                     MessageBox.Show("Key loaded successfully.");
                 }
             }
+        }
+
+        private void groupBox1_Enter(object sender, EventArgs e)
+        {
+
         }
     }
 }

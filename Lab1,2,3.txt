@@ -93,5 +93,4 @@ C. Submit
 - your codes
 - your compile files
 - your report
-Compress (rar or zip) all in one file with name in the form: Studentnumber-lab1,2,3.rar
-
+Compress (rar or zip) all in one file with name in the form: Studentnumber-
