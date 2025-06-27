@@ -365,3 +365,4 @@ FodyWeavers.xsd
 
 **/lib/
 **/include/
+Lab1/AES_testPer_Ubuntu/lib/libcryptopp.a
